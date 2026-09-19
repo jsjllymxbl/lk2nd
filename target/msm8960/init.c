@@ -200,8 +200,34 @@ static unsigned target_check_power_on_reason(void)
 	return power_on_status;
 }
 
+/*
+ * msm8960 has no set_download_mode() of its own, so the weak default in
+ * target/init.c is used and no cookie is ever written. As a result the SBL
+ * does not know it should enter download mode (EDL, USB PID 9006 on this
+ * SoC) and the device just boots normally again.
+ *
+ * The cookie below lives at the very beginning of the shared IMEM and uses
+ * the same values as set_dload_mode() in arch/arm/mach-msm/restart.c.
+ */
+#define DLOAD_COOKIE_0	0xE47B337D
+#define DLOAD_COOKIE_1	0xCE14091A
+
+int set_download_mode(enum reboot_reason mode)
+{
+	if (mode != NORMAL_DLOAD && mode != EMERGENCY_DLOAD)
+		return 0;
+
+	writel(DLOAD_COOKIE_0, MSM_SHARED_IMEM_BASE);
+	writel(DLOAD_COOKIE_1, MSM_SHARED_IMEM_BASE + sizeof(uint32_t));
+	dmb();
+
+	return 0;
+}
+
 void reboot_device(unsigned reboot_reason)
 {
+	set_download_mode(reboot_reason);
+
 	writel(reboot_reason, RESTART_REASON_ADDR);
 
 	/* Actually reset the chip */
