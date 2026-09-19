@@ -241,6 +241,7 @@
 - Samsung Galaxy S4 (SGH-M919)
 - Samsung Galaxy S4 Mini (GT-I9195)
 - Sony Xperia SP (huashan) (quirky - see comment in `lk2nd/device/dts/msm8960/bundle.dts`)
+- Xiaomi Mi 2 (aries) (quirky - see comment in `lk2nd/device/dts/msm8960/msm8960-xiaomi-aries.dts`)
 
 ### lk2nd-msm8610
 

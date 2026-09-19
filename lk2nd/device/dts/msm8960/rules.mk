@@ -3,3 +3,4 @@ LOCAL_DIR := $(GET_LOCAL_DIR)
 
 DTBS += \
 	$(LOCAL_DIR)/bundle.dtb \
+	$(LOCAL_DIR)/msm8960-xiaomi-aries.dtb \

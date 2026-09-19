@@ -1,0 +1,72 @@
+// SPDX-License-Identifier: BSD-3-Clause
+#include <skeleton32.dtsi>
+#include <lk2nd.dtsi>
+
+/*
+ * Xiaomi Mi 2/2S (aries) - APQ8064, no root node needed because the lk2nd DTB
+ * is bundled into the binary and never evaluated by another bootloader.
+ */
+&lk2nd {
+	/*
+	 * The stock bootloader (emmc_appsboot.mbn) hands over ATAGS and passes
+	 * machine type 0xf6d (3949 = APQ8064_MTP) in r1, which is why this board
+	 * file is named "MI 2" and uses the mitwo keypad (PM8921 GPIO 1/2).
+	 *
+	 * It also means there is nothing on the kernel cmdline to identify the
+	 * device: only androidboot.emmc / serialno / baseband / sdcard.type are
+	 * present, there is no androidboot.bootloader= or androidboot.device=.
+	 * So this device cannot share bundle.dts with the others. Build a
+	 * dedicated image instead:
+	 *
+	 *   make TOOLCHAIN_PREFIX=arm-none-eabi- \
+	 *        LK2ND_BUNDLE_DTB=msm8960-xiaomi-aries.dtb lk2nd-msm8960
+	 *
+	 * No lk2nd,dtb-files either: the Mi 2 downstream kernel is board-file
+	 * based (mach-msm/board-aries.c), not DT based.
+	 */
+	model = "Xiaomi Mi 2 (aries)";
+	compatible = "xiaomi,aries";
+
+	/*
+	 * The volume keys are a PM8921 keypad matrix, not plain buttons:
+	 * the rows are driven on PM8921 GPIO 9/10 and the columns are sensed
+	 * on GPIO 1/2 - see keypad_data_liquid (rows_gpio_start/cols_gpio_start)
+	 * in arch/arm/mach-msm/board-8960-pmic.c and pm8921_mitwo_kp_gpios in
+	 * board-aries-pmic.c, which drives GPIO 9/10 high for exactly this.
+	 *
+	 * The columns are pulled down and only go high while a row is driven,
+	 * so the rows have to be driven before the keys can be read at all.
+	 * gpio-leds is used for that: lk2nd applies it while parsing the device
+	 * node, which happens before lk2nd_keys_publish() samples the keys.
+	 *
+	 * Note that lk2nd numbers PMIC GPIOs zero based, i.e. PM8921 GPIO N
+	 * is written as N - 1 here.
+	 */
+	gpio-leds {
+		compatible = "gpio-leds";
+
+		keypad-row0 {
+			gpios = <&pmic 8 GPIO_ACTIVE_HIGH>;
+			default-state = "on";
+		};
+
+		keypad-row1 {
+			gpios = <&pmic 9 GPIO_ACTIVE_HIGH>;
+			default-state = "on";
+		};
+	};
+
+	gpio-keys {
+		compatible = "gpio-keys";
+
+		volume-up {
+			lk2nd,code = <KEY_VOLUMEUP>;
+			gpios = <&pmic 0 (GPIO_ACTIVE_HIGH | GPIO_PULL_DOWN)>;
+		};
+
+		volume-down {
+			lk2nd,code = <KEY_VOLUMEDOWN>;
+			gpios = <&pmic 1 (GPIO_ACTIVE_HIGH | GPIO_PULL_DOWN)>;
+		};
+	};
+};

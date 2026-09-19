@@ -15,7 +15,7 @@
 int lk2nd_gpio_pmic_config(uint32_t num, int flags)
 {
 	struct pm8921_gpio pm_gpio = {
-		.function	= !!(flags & GPIOL_FLAGS_ASSERTED),
+		.function	= PM_GPIO_FUNC_NORMAL,
 		.vin_sel	= PMIC_FLAGS_VIN_SEL(flags),
 		.out_strength	= clamp(GPIOL_CONF_DRVSTR(flags), 0, 3),
 	};
@@ -45,6 +45,18 @@ int lk2nd_gpio_pmic_config(uint32_t num, int flags)
 		pm_gpio.direction = PM_GPIO_DIR_OUT;
 	else
 		pm_gpio.direction = PM_GPIO_DIR_IN;
+
+	if (pm_gpio.direction & PM_GPIO_DIR_OUT) {
+		/*
+		 * Drive the pin to the requested level. Without an explicit
+		 * GPIO_DRIVE_STR() the strength would end up as PM_GPIO_STRENGTH_NO,
+		 * which does not drive the pin at all (needed e.g. to drive the
+		 * rows of a PM8921 keypad matrix).
+		 */
+		pm_gpio.output_value = !!(flags & GPIOL_FLAGS_ASSERTED);
+		if (!pm_gpio.out_strength)
+			pm_gpio.out_strength = PM_GPIO_STRENGTH_HIGH;
+	}
 
 	return pm8921_gpio_config(PMIC_GPIO_NUM_PIN(num), &pm_gpio);
 }
