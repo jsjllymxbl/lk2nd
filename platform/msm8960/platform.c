@@ -77,6 +77,16 @@ mmu_section_t mmu_section_table[] = {
 /*  Physical addr,    Virtual addr,    Size (in MB),    Flags */
 	{MEMBASE, MEMBASE, (MEMSIZE / MB), LK_MEMORY},
 	{BASE_ADDR, BASE_ADDR, 128, KERNEL_MEMORY},
+	/*
+	 * Map the hole between BASE_ADDR + 128MB and SCRATCH_ADDR so that
+	 * boot images placing kernel/ramdisk/tags there (e.g. base
+	 * 0x88000000) do not fault in aboot's memmove. Split in two so
+	 * that neither entry overlaps MEMBASE: the table is applied in
+	 * order and a later entry wins, and KERNEL_MEMORY is XN, so a
+	 * single 126MB entry would make lk2nd's own code non-executable.
+	 */
+	{0x88200000, 0x88200000, 13, KERNEL_MEMORY},    /* 0x88200000-0x88F00000 */
+	{0x89000000, 0x89000000, 112, KERNEL_MEMORY},   /* 0x89000000-0x90000000 */
 	{SCRATCH_ADDR, SCRATCH_ADDR, 768, SCRATCH_MEMORY},
 	{MSM_IOMAP_BASE, MSM_IOMAP_BASE, MSM_IOMAP_SIZE, IOMAP_MEMORY},
 	{MSM_IMEM_BASE, MSM_IMEM_BASE, 1, IMEM_MEMORY},
