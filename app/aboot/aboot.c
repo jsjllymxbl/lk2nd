@@ -2215,9 +2215,18 @@ int boot_linux_from_mmc(void)
 	}
 	#endif
 
-	/* Move kernel, ramdisk and device tree to correct address */
-	memmove((void*) hdr->kernel_addr, kernel_start_addr, kernel_size);
+	/* Move kernel, ramdisk and device tree to correct address.
+	 *
+	 * The ramdisk must be moved first: the boot image is loaded to
+	 * SCRATCH_ADDR and the ramdisk source is right after the kernel
+	 * source. If the kernel is moved to hdr->kernel_addr (typically
+	 * SCRATCH_ADDR + 0x8000) first, its destination range overlaps the
+	 * beginning of the ramdisk source (by ~kernel_addr - image_addr
+	 * bytes), corrupting the ramdisk magic before it gets copied out.
+	 * cmd_boot() already uses this (correct) order for 'fastboot boot'.
+	 */
 	memmove((void*) hdr->ramdisk_addr, (char *)(image_addr + page_size + kernel_actual), hdr->ramdisk_size);
+	memmove((void*) hdr->kernel_addr, kernel_start_addr, kernel_size);
 
 	if (boot_into_recovery && !device.is_unlocked && !device.is_tampered)
 		target_load_ssd_keystore();
