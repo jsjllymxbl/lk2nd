@@ -19,10 +19,31 @@
 	 * dedicated image instead:
 	 *
 	 *   make TOOLCHAIN_PREFIX=arm-none-eabi- \
-	 *        LK2ND_BUNDLE_DTB=msm8960-xiaomi-aries.dtb lk2nd-msm8960
+	 *        LK2ND_BUNDLE_DTB=msm8960-xiaomi-aries.dtb \
+	 *        LK2ND_PARTITION_BASE=recovery \
+	 *        LK2ND_PARTITION_SIZE="256*1024" \
+	 *        LK2ND_RECOVERY_BASE=boot \
+	 *        LK2ND_RECOVERY_OFFSET="15*1024*1024" \
+	 *        LK2ND_FORCE_FASTBOOT=1 \
+	 *        lk2nd-msm8960
 	 *
 	 * No lk2nd,dtb-files either: the Mi 2 downstream kernel is board-file
 	 * based (mach-msm/board-aries.c), not DT based.
+	 *
+	 * lk2nd is installed into the recovery partition, so that the stock
+	 * bootloader keeps booting Android from the untouched boot partition.
+	 * On the Mi 2 both partitions are rather small (boot: 30 MiB,
+	 * recovery: 15 MiB), so lk2nd only reserves 256 KiB (instead of the
+	 * usual 512 KiB) of the recovery partition to leave enough space for
+	 * the mainline boot image.
+	 *
+	 *   recovery:  [ lk2nd: 256 KiB ][ boot: mainline boot.img   ]
+	 *   boot:      [ androidboot: Android boot.img ][ recovery   ]
+	 *
+	 * i.e. "Continue" boots the mainline boot.img placed 256 KiB into the
+	 * recovery partition (fastboot flash boot) and "Recovery" boots the
+	 * Android recovery placed 15 MiB into the boot partition
+	 * (fastboot flash recovery).
 	 */
 	model = "Xiaomi Mi 2 (aries)";
 	compatible = "xiaomi,aries";
