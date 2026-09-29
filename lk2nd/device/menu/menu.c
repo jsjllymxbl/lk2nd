@@ -20,6 +20,7 @@
 
 // Defined in app/aboot/aboot.c
 extern void cmd_continue(const char *arg, void *data, unsigned sz);
+extern unsigned boot_into_recovery;
 
 #define FONT_WIDTH	(5+1)
 #define FONT_HEIGHT	12
@@ -121,12 +122,21 @@ static uint16_t wait_key(void)
 #define xstr(s) str(s)
 #define str(s) #s
 
-static void opt_continue(void)   { cmd_continue(NULL, NULL, 0); }
+static void opt_continue(void)
+{
+	/*
+	 * "Continue" always boots the default image ("boot" partition).
+	 * lk2nd is often started through the recovery path of the primary
+	 * bootloader (or with the volume up key still held), which makes
+	 * aboot set boot_into_recovery. Clear it, otherwise "Continue" would
+	 * boot the very same image as "Recovery".
+	 */
+	boot_into_recovery = 0;
+	cmd_continue(NULL, NULL, 0);
+}
 static void opt_reboot(void)     { reboot_device(0); }
 static void opt_recovery(void)
 {
-	extern unsigned boot_into_recovery;
-
 	boot_into_recovery = 1;
 	cmd_continue(NULL, NULL, 0);
 }
