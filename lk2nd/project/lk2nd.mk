@@ -17,6 +17,22 @@ LK2ND_PARTITION_BASE ?= boot
 LK2ND_PARTITION_NAME ?= lk2nd
 LK2ND_PARTITION_SIZE ?= 512*1024
 
+# lk2nd can also be installed into the "recovery" partition, so that the
+# primary bootloader keeps booting Android from the untouched "boot"
+# partition. The Android recovery image is then moved into another partition
+# (usually "boot"), LK2ND_RECOVERY_OFFSET bytes after its start, and the
+# partition names are swapped:
+#
+#   recovery:     [ lk2nd: 512 KiB ][ boot: mainline boot.img ... ]
+#   boot:         [ androidboot: Android boot.img ][ recovery: ... ]
+#
+# "boot" is then the image lk2nd boots by default (`fastboot flash boot`) and
+# "recovery" is the Android recovery (`fastboot flash recovery`).
+# Leave LK2ND_RECOVERY_BASE empty to disable this.
+LK2ND_RECOVERY_BASE ?=
+LK2ND_RECOVERY_OFFSET ?= 15*1024*1024
+LK2ND_ANDROID_BOOT_NAME ?= androidboot
+
 PANIC_REBOOT_MODE ?= FASTBOOT_MODE
 
 # The primary bootloader will implement LONG_PRESS_POWER_ON if needed.

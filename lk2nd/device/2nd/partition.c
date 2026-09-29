@@ -108,11 +108,96 @@ static void lk2nd_partition_split_flash(void)
 #endif
 }
 
+#if defined(LK2ND_RECOVERY_BASE) && defined(LK2ND_PARTITION_BASE)
+
+static struct partition_entry *partition_find(const char *name)
+{
+	int index = partition_get_index(name);
+
+	if (index == INVALID_PTN) {
+		dprintf(CRITICAL, "%s partition not found\n", name);
+		return NULL;
+	}
+
+	return &partition_get_partition_entries()[index];
+}
+
+static void partition_rename(struct partition_entry *ptn, const char *name)
+{
+	dprintf(SPEW, "Renaming partition %s to %s\n", ptn->name, name);
+	strlcpy((char *)ptn->name, name, sizeof(ptn->name));
+}
+
+/**
+ * lk2nd_partition_move_recovery_mmc() - Move the Android recovery image away
+ * from the partition lk2nd is installed into.
+ */
+static void lk2nd_partition_move_recovery_mmc(void)
+{
+	uint32_t block_size = mmc_get_device_blocksize();
+	unsigned long long num_blocks = LK2ND_RECOVERY_OFFSET / block_size;
+	struct partition_entry *android, *boot;
+
+	if (!strcmp(LK2ND_PARTITION_BASE, LK2ND_RECOVERY_BASE)) {
+		dprintf(CRITICAL, "Cannot move recovery into the lk2nd partition\n");
+		return;
+	}
+
+	android = partition_find(LK2ND_RECOVERY_BASE);
+	boot = partition_find(LK2ND_PARTITION_BASE);
+	if (!android || !boot)
+		return;
+
+#ifdef LK2ND_PARTITION_NAME
+	/* Make sure lk2nd was really split out of its partition */
+	if (!partition_find(LK2ND_PARTITION_NAME))
+		return;
+#endif
+
+	if (android->size <= num_blocks) {
+		dprintf(CRITICAL, "%s partition has not enough space for recovery (%llu <= %llu)\n",
+			LK2ND_RECOVERY_BASE, android->size, num_blocks);
+		return;
+	}
+
+	/*
+	 * The Android boot image stays at the beginning of the partition,
+	 * rename it to free up the "boot" name for the image lk2nd boots.
+	 */
+	partition_rename(android, LK2ND_ANDROID_BOOT_NAME);
+
+	/* Everything after lk2nd in its own partition becomes "boot". */
+	partition_rename(boot, "boot");
+
+	/* The rest of the original boot partition holds the recovery image. */
+	partition_split_mmc(LK2ND_ANDROID_BOOT_NAME, "recovery",
+			    android->size - num_blocks, true);
+
+	dprintf(INFO, "lk2nd: boot: %s+%u, recovery: %s+%llu, %s: %s+0\n",
+		LK2ND_PARTITION_BASE, LK2ND_PARTITION_SIZE,
+		LK2ND_RECOVERY_BASE, (unsigned long long)LK2ND_RECOVERY_OFFSET,
+		LK2ND_ANDROID_BOOT_NAME, LK2ND_RECOVERY_BASE);
+}
+
+static void lk2nd_partition_move_recovery_flash(void)
+{
+	dprintf(CRITICAL, "Moving the recovery partition is only supported on eMMC\n");
+}
+
+#endif /* LK2ND_RECOVERY_BASE */
+
 static void lk2nd_device2nd_partition_split(void)
 {
-	if (target_is_emmc_boot())
+	if (target_is_emmc_boot()) {
 		lk2nd_partition_split_mmc();
-	else
+#if defined(LK2ND_RECOVERY_BASE) && defined(LK2ND_PARTITION_BASE)
+		lk2nd_partition_move_recovery_mmc();
+#endif
+	} else {
 		lk2nd_partition_split_flash();
+#if defined(LK2ND_RECOVERY_BASE) && defined(LK2ND_PARTITION_BASE)
+		lk2nd_partition_move_recovery_flash();
+#endif
+	}
 }
 LK2ND_INIT(lk2nd_device2nd_partition_split);

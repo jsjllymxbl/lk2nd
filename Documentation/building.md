@@ -102,6 +102,50 @@ The default depends on the project configuration:
 Set the maximum amount of memory available for booting (kernel, device tree,
 and initramfs). Default is `0x03200000` (50 MiB).
 
+#### `LK2ND_PARTITION_BASE=`, `LK2ND_PARTITION_NAME=`, `LK2ND_PARTITION_SIZE=` - Where lk2nd is installed
+
+By default lk2nd is installed into the first `LK2ND_PARTITION_SIZE` bytes
+(512 KiB) of the `boot` partition. The image lk2nd boots then starts right
+after it, i.e. at `boot` + 512 KiB.
+
+Set `LK2ND_PARTITION_BASE=recovery` to install lk2nd into the `recovery`
+partition instead, e.g. to keep the Android boot image (booted by the primary
+bootloader) completely untouched.
+
+#### `LK2ND_RECOVERY_BASE=`, `LK2ND_RECOVERY_OFFSET=`, `LK2ND_ANDROID_BOOT_NAME=` - Move the Android recovery image
+
+When lk2nd is installed into the `recovery` partition there is no space left
+for the Android recovery image there. Set `LK2ND_RECOVERY_BASE` (e.g. `boot`)
+to move it into another partition, `LK2ND_RECOVERY_OFFSET` bytes after its
+start (default: `15*1024*1024`). The partition names are then swapped so that
+everything keeps working with the usual commands:
+
+```
+recovery:  [ lk2nd: 512 KiB ][ boot: boot.img            ]
+boot:      [ androidboot: Android boot.img ][ recovery    ]
+```
+
+- `boot` - the image lk2nd boots by default (`fastboot flash boot`,
+  "Continue" in the lk2nd menu): `recovery` + 512 KiB
+- `recovery` - the Android recovery image (`fastboot flash recovery`,
+  "Recovery" in the lk2nd menu): `boot` + `LK2ND_RECOVERY_OFFSET`
+- `LK2ND_ANDROID_BOOT_NAME` (default: `androidboot`) - what is left of the
+  original Android boot partition, still booted by the primary bootloader
+
+Example:
+
+```
+$ make TOOLCHAIN_PREFIX=arm-none-eabi- \
+       LK2ND_PARTITION_BASE=recovery \
+       LK2ND_RECOVERY_BASE=boot \
+       LK2ND_RECOVERY_OFFSET="15*1024*1024" \
+       lk2nd-msmXXXX
+```
+
+> [!NOTE]
+> `fastboot getvar partition-size` is published before the partition table is
+> modified and will still report the original sizes.
+
 ### lk1st specific
 
 #### `LK2ND_COMPATIBLE=` - Board compatible
